@@ -1,0 +1,1 @@
+[{"traj1": {"observation": [1.2, 3.2, 3, -1.1], "action": [0.1, 0.2, -0.3, 0.4]}, "traj2": {"observation": [0.2, 0.2, 3, -1.1], "action": [1, 2, -0.3, 0.4]}, "preference": 1}, {"traj1": {"observation": [1.2, 3.2, 3, -1.1], "action": [0.1, 0.2, -0.3, 0.4]}, "traj2": {"observation": [0.2, 0.2, 3, -1.1], "action": [1, 2, -0.3, 0.4]}, "preference": 1}]
