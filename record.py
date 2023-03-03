@@ -18,7 +18,11 @@ trajectory = {
     "actions": []
 }
 
-env = CustomRecordVideo(gym.make('Pendulum-v1'), video_folder='./video', step_trigger=step_trigger, video_length==VIDEO_LENGTH) # NOT using custom frequency yet
+# observations, actions = [], []
+
+# when sampling trajectories, need to truncate to the shorter length of the two, using assert
+
+env = CustomRecordVideo(gym.make('Pendulum-v1'), video_folder='./video', step_trigger=step_trigger, video_length=VIDEO_LENGTH) # NOT using custom frequency yet
 observation = env.reset()
 done = False
 
