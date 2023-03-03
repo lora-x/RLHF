@@ -135,8 +135,9 @@ class CustomRecordVideo(gym.Wrapper):
     def step(self, action):
         """Steps through the environment using action, recording observations if :attr:`self.recording`.
         
-        If recording observations, also capture corresponding trajectories, so that can build training data for the reward network.
-        
+        If recording observations, also capture corresponding trajectories separately, 
+        so that can build training data for the reward network.
+
         
         """
         (

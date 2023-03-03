@@ -29,9 +29,9 @@ class RewardNetwork(nn.Module):
 
 
     def forward(self, observations):
-        # squeeze the result so that it's 2-dimensional, i.e. just [batch size] * [traj_length]
+        # squeeze the result so it's either [batch size] * [traj_length] or just for [1] i.e. reward for a single (obs, action) pair
         output = self.network(observations).squeeze() 
-        assert output.ndim == 2
+        print("reward network output shape: ", output.shape)
         return output
 
     def calculate_advantage(self, returns, observations):
@@ -109,16 +109,24 @@ class RewardNetwork(nn.Module):
     def traj_to_reward(self, traj, exponential = True):
         observations = traj["observations"]
         actions = traj["actions"]
-        temp = np.concatenate((observations, actions), axis = -1)
+        temp = np.concatenate([observations, actions], axis = -1)
         reward_input = np2torch(np.concatenate((observations, actions), axis = -1)) # now dim = batch size x traj length x (obs dim + act dim)
         traj_reward = self.forward(reward_input) # shape = [batch size, traj length]
         traj_reward = torch.sum(traj_reward, dim = 1) # sum over the trajectory, for each t. Now dim = [batch size]
         if exponential:
             traj_reward = torch.exp(traj_reward)
-        print("traj reward dtype: ", traj_reward.dtype)
         return traj_reward
     
 
 # test
+# test_traj1 = {"observations": np.array([[[1, 2, 3], [4, 5, 6]],
+#                                         [[1, 2, 3], [4, 5, 6]],
+#                                         [[1, 2, 3], [4, 5, 6]]],
+#                                         dtype=float), "actions": np.array([[[1],[1]],[[1],[1]],[[1],[1]]], dtype=float)}
+# test_traj2 = {"observations": np.array([[[0, 2, 3], [4, 5, 6]],
+#                                         [[0, 2, 3], [4, 5, 6]],
+#                                         [[0, 2, 3], [4, 5, 6]]],
+#                                         dtype=float), "actions": np.array([[[1],[1]],[[1],[1]],[[1],[1]]], dtype=float)}
+# test_labels = np.array([3, 1, 2])
 # test_reward_network = RewardNetwork(gym.make('Pendulum-v1'))
 # test_reward_network.update_reward(test_traj1, test_traj2, test_labels)

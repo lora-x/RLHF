@@ -1,8 +1,15 @@
-import gym
-import copy
-import time
+import gym, copy, time
+import numpy as np
+
+# networks
+# from policy_gradient import PolicyGradient
+from reward_network import RewardNetwork
+
+# wrappers
 from gym.wrappers import RecordVideo, Monitor
 from rlhf_record_video import CustomRecordVideo
+from reward_wrapper import RewardNetworkWrapper
+
 
 FREQUENCY = 50
 VIDEO_LENGTH = 30
@@ -15,33 +22,38 @@ def step_trigger(step):
 trajectories = []
 trajectory = {
     "observations": [],
-    "actions": []
+    "actions": [],
+    "rewards": [],
 }
 
 # observations, actions = [], []
 
 # when sampling trajectories, need to truncate to the shorter length of the two, using assert
 
-env = CustomRecordVideo(gym.make('Pendulum-v1'), video_folder='./video', step_trigger=step_trigger, video_length=VIDEO_LENGTH) # NOT using custom frequency yet
+# init
+env = gym.make('Pendulum-v1')
 observation = env.reset()
+reward_network = RewardNetwork(env)
+env = RewardNetworkWrapper(env, reward_network, observation)
+env = CustomRecordVideo(env, video_folder='./video', step_trigger=step_trigger, video_length=VIDEO_LENGTH) # NOT using custom frequency yet
+
 done = False
 
 frames = 10
 i = 0
-while not done:
-    trajectory["observations"].append(observation.tolist())
+while i < 300:
+    trajectory["observations"].append(observation.tolist()) # record prev observation
     action = env.action_space.sample()
     trajectory["actions"].append(action.tolist())
     observation, reward, done, info = env.step(action) # observation here is the next observation
-    # print(env.step(action)) 
+    trajectory["rewards"].append(reward.tolist())
     i += 1
-    # if done:
-    #     env.reset()
     if i % frames == 0:
         trajectories.append(copy.deepcopy(trajectory))
         trajectory["observations"] = [] # clear the trajectory
         trajectory["actions"] = []
-
+    if done:
+        env.reset()
 env.close()
 
 
