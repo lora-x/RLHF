@@ -16,10 +16,10 @@ class RewardNetwork(nn.Module):
         self.lr = 3e-2
         observation_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]
-        print ("self.env.action_space = ", self.env.action_space)
+        input_dim = observation_dim + action_dim
 
         self.network = nn.Sequential(
-            nn.Linear(observation_dim + action_dim, 64),
+            nn.Linear(input_dim, 64),
             nn.LeakyReLU(negative_slope=0.01),
             nn.Linear(64, 64),
             nn.LeakyReLU(negative_slope=0.01),
@@ -29,9 +29,9 @@ class RewardNetwork(nn.Module):
 
 
     def forward(self, observations):
-        # squeeze the result so that it's 1-dimensional, i.e. just [batch size]
+        # squeeze the result so that it's 2-dimensional, i.e. just [batch size] * [traj_length]
         output = self.network(observations).squeeze() 
-        assert output.ndim == 1
+        assert output.ndim == 2
         return output
 
     def calculate_advantage(self, returns, observations):
@@ -71,7 +71,20 @@ class RewardNetwork(nn.Module):
             label = 1 if traj1 is more preferable, = 2 if traj2 is more preferable, = 3 if equally preferable
 
         training data looks like:
-        a list of traj_1, a list of traj_2, a label for which is more preferable
+        traj_1 & traj_2 (dictionary that has key "observation" and "action"),, labels (np array of shape [batch size])
+
+        e.g.
+
+        # batch size = 3, traj_length = 2, observation_dim = 3, action_dim = 1
+        test_traj1 = {"observations": np.array([[[1, 2, 3], [4, 5, 6]],
+                                                [[1, 2, 3], [4, 5, 6]],
+                                                [[1, 2, 3], [4, 5, 6]]],
+                                                dtype=float), "actions": np.array([[[1],[1]],[[1],[1]],[[1],[1]]], dtype=float)}
+        test_traj2 = {"observations": np.array([[[0, 2, 3], [4, 5, 6]],
+                                                [[0, 2, 3], [4, 5, 6]],
+                                                [[0, 2, 3], [4, 5, 6]]],
+                                                dtype=float), "actions": np.array([[[1],[1]],[[1],[1]],[[1],[1]]], dtype=float)}
+        test_labels = np.array([3, 1, 2])
         """
         
         traj1_reward = self.traj_to_reward(traj1)
@@ -79,7 +92,6 @@ class RewardNetwork(nn.Module):
         p1 = torch.log((traj1_reward)/(traj1_reward + traj2_reward))
         p2 = torch.log((traj2_reward)/(traj1_reward + traj2_reward))
         mu1, mu2 = self.mu(labels)
-        print("mu1 :", mu1, " mu2: ", mu2)
 
         loss = - torch.sum(p1 * mu1 + p2 * mu2)
 
@@ -87,34 +99,26 @@ class RewardNetwork(nn.Module):
         loss.backward()
         self.optimizer.step()
     
-    def mu(self, labels):
+    def mu(self, labels): # labels input dim = [batch size]
+        print("labels.dtype", labels.dtype)
         labels = labels.astype(float)
         mu1 = np.piecewise(labels, [labels == 1, labels == 2, labels == 3], [1, 0, 1/2])
         mu2 = np.piecewise(labels, [labels == 1, labels == 2, labels == 3], [0, 1, 1/2])
-        print("mu1.dtype", mu1.dtype)
         return np2torch(mu1), np2torch(mu2)
     
     def traj_to_reward(self, traj, exponential = True):
         observations = traj["observations"]
         actions = traj["actions"]
+        temp = np.concatenate((observations, actions), axis = -1)
         reward_input = np2torch(np.concatenate((observations, actions), axis = -1)) # now dim = batch size x traj length x (obs dim + act dim)
-        traj_reward = self.network(reward_input) 
-        print("supposed traj_reward = ", traj_reward)
-        traj_reward = torch.sum(traj_reward) # sum over the trajectory, for each t
+        traj_reward = self.forward(reward_input) # shape = [batch size, traj length]
+        traj_reward = torch.sum(traj_reward, dim = 1) # sum over the trajectory, for each t. Now dim = [batch size]
         if exponential:
             traj_reward = torch.exp(traj_reward)
+        print("traj reward dtype: ", traj_reward.dtype)
         return traj_reward
     
 
 # test
-# batch size = 2, traj_length = 2, observation_dim = 3, action_dim = 1
-test_traj1 = {"observations": np.array([[[1, 2, 3], [4, 5, 6]],
-                                        [[1, 2, 3], [4, 5, 6]]],
-                                        dtype=float), "actions": np.array([[[1],[1]],[[1],[1]]], dtype=float)}
-test_traj2 = {"observations": np.array([[[1, 2, 3], [4, 5, 6]],
-                                        [[1, 2, 3], [4, 5, 6]]],
-                                        dtype=float), "actions": np.array([[[1],[1]],[[1],[1]]], dtype=float)}
-test_labels = np.array([[3], [1]])
-
-test_reward_network = RewardNetwork(gym.make('Pendulum-v1'))
-test_reward_network.update_reward(test_traj1, test_traj2, test_labels)
+# test_reward_network = RewardNetwork(gym.make('Pendulum-v1'))
+# test_reward_network.update_reward(test_traj1, test_traj2, test_labels)
