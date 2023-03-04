@@ -2,13 +2,13 @@ import gym, copy, time
 import numpy as np
 
 # networks
-# from policy_gradient import PolicyGradient
+from policy_gradient import placeholder_policy
 from reward_network import RewardNetwork
 
 # wrappers
 from gym.wrappers import RecordVideo, Monitor
 from rlhf_record_video import CustomRecordVideo
-from reward_wrapper import RewardNetworkWrapper
+from reward_wrapper import CustomReward
 
 
 FREQUENCY = 50
@@ -32,9 +32,9 @@ trajectory = {
 
 # init
 env = gym.make('Pendulum-v1')
-observation = env.reset()
+observation = env.reset() # initial observation
 reward_network = RewardNetwork(env)
-env = RewardNetworkWrapper(env, reward_network, observation)
+env = CustomReward(env, reward_network, observation)
 env = CustomRecordVideo(env, video_folder='./video', step_trigger=step_trigger, video_length=VIDEO_LENGTH) # NOT using custom frequency yet
 
 done = False
@@ -42,18 +42,25 @@ done = False
 frames = 10
 i = 0
 while i < 300:
-    trajectory["observations"].append(observation.tolist()) # record prev observation
-    action = env.action_space.sample()
+    print("i: ", i)
+    # sample action
+    action = placeholder_policy(env, observation)
+    # step
+    next_observation, reward, done, info = env.step(action)
+    print("observation: ", observation)
+    print("next_observation: ", next_observation)
+    trajectory["observations"].append(observation.tolist()) 
     trajectory["actions"].append(action.tolist())
-    observation, reward, done, info = env.step(action) # observation here is the next observation
     trajectory["rewards"].append(reward.tolist())
+    # update observation for next step
+    observation = next_observation 
     i += 1
     if i % frames == 0:
         trajectories.append(copy.deepcopy(trajectory))
         trajectory["observations"] = [] # clear the trajectory
         trajectory["actions"] = []
-    if done:
-        env.reset()
+    # if done:
+    #     observation = env.reset() # problem: this creates async for 1 round between observation here and prev_observation in reward_wrapper.py for next round
 env.close()
 
 

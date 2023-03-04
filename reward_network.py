@@ -28,39 +28,11 @@ class RewardNetwork(nn.Module):
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr = self.lr)
 
 
-    def forward(self, observations):
-        # squeeze the result so it's either [batch size] * [traj_length] or just for [1] i.e. reward for a single (obs, action) pair
-        output = self.network(observations).squeeze() 
-        print("reward network output shape: ", output.shape)
+    def forward(self, reward_input):
+        # squeeze the result so it's either [batch size] * [traj_length] or just for torch.Size([]) i.e. a scalar reward for a single (obs, action) pair
+        output = self.network(reward_input).squeeze() 
         return output
-
-    def calculate_advantage(self, returns, observations):
-        """
-        Args:
-            returns: np.array of shape [batch size]
-                all discounted future returns for each step
-            observations: np.array of shape [batch size, dim(observation space)]
-        Returns:
-            advantages: np.array of shape [batch size]
-
-        TODO:
-        Evaluate the baseline and use the result to compute the advantages.
-        Put the advantages in a variable called "advantages" (which will be
-        returned).
-
-        Note:
-        The arguments and return value are numpy arrays. The np2torch function
-        converts numpy arrays to torch tensors. You will have to convert the
-        network output back to numpy, which can be done via the numpy() method.
-        """
-        observations = np2torch(observations)
-        #######################################################
-        #########   YOUR CODE HERE - 1-4 lines.   ############
-        baseline = self.forward(observations).detach().numpy()
-        advantages = returns - baseline
-        #######################################################
-        #########          END YOUR CODE.          ############
-        return advantages
+        
 
     def update_reward(self, traj1, traj2, labels):
         """

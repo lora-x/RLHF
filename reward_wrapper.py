@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from network_utils import np2torch 
 
-class RewardNetworkWrapper(gym.Wrapper):
+class CustomReward(gym.Wrapper):
     def __init__(self, env, reward_network, initial_observation):
         super().__init__(env)
         self.reward_network = reward_network
@@ -11,9 +11,10 @@ class RewardNetworkWrapper(gym.Wrapper):
 
     def step(self, action):
         observation, _, done, info = self.env.step(action)
-        print ("in wrapper, observation shape: ", observation.shape)
+        print("in wrapper, self.prev_observation: ", self.prev_observation)
+        print("in wrapper, observation: ", observation)
         reward_input = np.concatenate([self.prev_observation, action], axis=-1)
-        print("reward_input shape: ", reward_input.shape)
+        # reward_input = np.concatenate([self.prev_observation, action], axis=-1)
         reward_input = np2torch(reward_input)
         reward = self.reward_network(reward_input)
         self.prev_observation = observation

@@ -8,6 +8,8 @@ from network_utils import build_mlp, device, np2torch
 from policy import CategoricalPolicy, GaussianPolicy
 import pdb
 
+def placeholder_policy (env, observation):
+    return env.action_space.sample()
 
 class PolicyGradient(object):
     """
@@ -57,10 +59,13 @@ class PolicyGradient(object):
 
     def init_policy(self):
         """
-        Please do the following:
+        Does the following:
         1. Create a network using build_mlp. It should map vectors of size
            self.observation_dim to vectors of size self.action_dim, and use
            the number of layers and layer size from self.config
+
+            TODO: Uses tanh to squash the output of the network to the range of action in for the particular env
+
         2. If self.discrete = True (meaning that the actions are discrete, i.e.
            from the set {0, 1, ..., N-1} where N is the number of actions),
            instantiate a CategoricalPolicy.
