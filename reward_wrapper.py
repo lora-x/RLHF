@@ -6,9 +6,10 @@ from preference_db import PreferenceDb
 import random
 
 class CustomReward(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, synthetic_feedback = "false"): # by default uses human feedback
         super().__init__(env)
         self.env = env
+        self.synthetic_feedback = synthetic_feedback
         self.reward_network = RewardNetwork(env)
         self.prev_observation = env.reset() # initial observation
         self.update_frequency = 1 # how often to update the reward network
@@ -20,7 +21,14 @@ class CustomReward(gym.Wrapper):
     # how can i not load the whole thing database? 
 
     def step(self, action):
-        observation, _, done, info = self.env.step(action)
+        observation, env_reward, done, info = self.env.step(action) # env reward is the algorithmically generated real reward by the original environment
+
+        if self.synthetic_feedback == "true":
+            # add original reward info so it can be used in the feedback wrapper
+            info["env_reward"] = env_reward
+        
+        print("info['env_reward'] = ", info["env_reward"])
+
         print ("Sanity check: in reward wrapper step_id = ", self.step_id)
 
         # calculate reward 
