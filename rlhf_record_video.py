@@ -7,6 +7,18 @@ from gym import logger
 from gym.wrappers.monitoring import video_recorder
 # import video_recorder
 
+"""
+BUGGG!!!!!
+
+after 200 frames, clips become of length 1.
+
+ _._     _,-'""`-._
+(,-.`._,'(       |\`-/|
+    `-.-' \ )-`( , o o)
+          `-    \`_`"'-
+          
+"""
+
 
 def capped_cubic_video_schedule(episode_id: int) -> bool:
     """The default episode trigger.

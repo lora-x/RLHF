@@ -30,8 +30,9 @@ class CustomReward(gym.Wrapper):
         reward = reward.detach().numpy() # tensor to numpy
         self.prev_observation = observation
 
-        # may need to update the reward network
+        # update the reward network at given frequency
         if self.step_id % self.update_frequency == 0:
+            print("Updating reward network...")
             sampled_traj1s, sampled_traj2s, sampled_preferences = self.sample_preferences()
             self.reward_network.update_network(sampled_traj1s, sampled_traj2s, sampled_preferences)
 
