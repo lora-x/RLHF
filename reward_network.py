@@ -64,7 +64,6 @@ class RewardNetwork(nn.Module):
                                                 dtype=float), "actions": np.array([[[1],[1]],[[1],[1]],[[1],[1]]], dtype=float)}
         test_preferences = np.array([3, 1, 2])
         """
-        
         traj1_reward = self.__traj_to_reward(traj1)
         traj2_reward = self.__traj_to_reward(traj2)
         p1 = torch.log((traj1_reward)/(traj1_reward + traj2_reward))
@@ -72,6 +71,7 @@ class RewardNetwork(nn.Module):
         mu1, mu2 = self.__mu(preferences)
 
         loss = - torch.sum(p1 * mu1 + p2 * mu2)
+        print("loss: ", loss)
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -88,7 +88,7 @@ class RewardNetwork(nn.Module):
         actions = np.asarray(traj["actions"], dtype=np.float32)
         reward_input = np2torch(np.concatenate((observations, actions), axis = -1)) # now dim = batch size x traj length x (obs dim + act dim)
         traj_reward = self.predict_reward(reward_input) # shape = [batch size, traj length]
-        traj_reward = torch.sum(traj_reward, dim = 1) # sum over the trajectory, for each t. Now dim = [batch size]
+        traj_reward = torch.sum(traj_reward, dim = -1) # sum over the trajectory, for each t. Now dim = [batch size]
         if exponential:
             traj_reward = torch.exp(traj_reward)
         return traj_reward
@@ -96,12 +96,12 @@ class RewardNetwork(nn.Module):
 
 # test
 # batch size = 3, traj_length = 2, observation_dim = 3, action_dim = 1
-test_traj1 = {"observations": [[[1, 2, 3], [4, 5, 6]],
-                                        [[1, 2, 3], [4, 5, 6]],
-                                        [[1, 2, 3], [4, 5, 6]]], "actions": [[[1],[1]],[[1],[1]],[[1],[1]]]}
-test_traj2 = {"observations": [[[0, 2, 3], [4, 5, 6]],
-                                        [[0, 2, 3], [4, 5, 6]],
-                                        [[0, 2, 3], [4, 5, 6]]], "actions": [[[1],[1]],[[1],[1]],[[1],[1]]]}
-test_preferences = [3, 1, 2]
-test_reward_network = RewardNetwork(gym.make('Pendulum-v1'))
-test_reward_network.update_network(test_traj1, test_traj2, test_preferences)
+# test_traj1 = {"observations": [[[1, 2, 3], [4, 5, 6]],
+#                                         [[1, 2, 3], [4, 5, 6]],
+#                                         [[1, 2, 3], [4, 5, 6]]], "actions": [[[1],[1]],[[1],[1]],[[1],[1]]]}
+# test_traj2 = {"observations": [[[0, 2, 3], [4, 5, 6]],
+#                                         [[0, 2, 3], [4, 5, 6]],
+#                                         [[0, 2, 3], [4, 5, 6]]], "actions": [[[1],[1]],[[1],[1]],[[1],[1]]]}
+# test_preferences = [3, 1, 2]
+# test_reward_network = RewardNetwork(gym.make('Pendulum-v1'))
+# test_reward_network.update_network(test_traj1, test_traj2, test_preferences)

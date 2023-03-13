@@ -4,15 +4,17 @@ from network_utils import np2torch
 from reward_network import RewardNetwork
 from preference_db import PreferenceDb
 import random
+import json
 
-class CustomReward(gym.Wrapper):
+class FeedbackReward(gym.Wrapper):
     def __init__(self, env, synthetic_feedback = "false"): # by default uses human feedback
         super().__init__(env)
         self.env = env
         self.synthetic_feedback = synthetic_feedback
         self.reward_network = RewardNetwork(env)
         self.prev_observation = env.reset() # initial observation
-        self.update_frequency = 1 # how often to update the reward network
+        self.update_frequency = 50 # how often to update the reward network
+        self.batch_size = 10 # how many samples to use to update the reward network
         self.step_id = 0
 
         self.pref_db = PreferenceDb.get_instance()
@@ -26,10 +28,8 @@ class CustomReward(gym.Wrapper):
         if self.synthetic_feedback == "true":
             # add original reward info so it can be used in the feedback wrapper
             info["env_reward"] = env_reward
-        
-        print("info['env_reward'] = ", info["env_reward"])
 
-        print ("Sanity check: in reward wrapper step_id = ", self.step_id)
+        # print ("Sanity check: in reward wrapper step_id = ", self.step_id, ". In sync?)
 
         # calculate reward 
         reward_input = np.concatenate([self.prev_observation, action], axis=-1)
@@ -39,10 +39,12 @@ class CustomReward(gym.Wrapper):
         self.prev_observation = observation
 
         # update the reward network at given frequency
-        if self.step_id % self.update_frequency == 0:
-            print("Updating reward network...")
-            sampled_traj1s, sampled_traj2s, sampled_preferences = self.sample_preferences()
+        if self.pref_db.db_size > 0 and self.step_id % self.update_frequency == 0:
+            print(f"At step {self.step_id}, updating reward network...")
+            sampled_traj1s, sampled_traj2s, sampled_preferences = self.sample_preferences(self.batch_size)
             self.reward_network.update_network(sampled_traj1s, sampled_traj2s, sampled_preferences)
+
+        self.step_id += 1
 
         return observation, reward, done, info
     
@@ -51,8 +53,25 @@ class CustomReward(gym.Wrapper):
         Sample k pairs with preferences from all recorded preferences
         """
         pref_db = self.pref_db
-        indices = random.sample(range(1, pref_db.db_size), min(num_samples, pref_db.db_size))
-        sampled_traj1s = [pref_db.traj1s[i] for i in indices]
-        sampled_traj2s = [pref_db.traj2s[i] for i in indices]
+        indices = random.sample(range(pref_db.db_size), min(num_samples, pref_db.db_size))
+        # TODO: can probably do a better data structure back in feedback wrapper to avoid so much iteration
+        sampled_traj1s = {"observations": [pref_db.traj1s["observations"][i] for i in indices], "actions": [pref_db.traj1s["actions"][i] for i in indices]}
+        sampled_traj2s = {"observations": [pref_db.traj2s["observations"][i] for i in indices], "actions": [pref_db.traj2s["actions"][i] for i in indices]}
         sampled_preferences = [pref_db.preferences[i] for i in indices]
         return sampled_traj1s, sampled_traj2s, sampled_preferences
+    
+    def init_test_db(self):
+        with open("test_db.json") as f:
+            self.pref_db = json.load(f)
+        return
+
+# TEST
+
+# env = FeedbackReward(gym.make('Pendulum-v1'), synthetic_feedback = "true")
+# env.reset()
+# env.init_test_db()
+
+# for i in range(400):
+#     observation, reward, done, info = env.step(env.action_space.sample())
+#     if done:
+#         env.reset()

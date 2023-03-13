@@ -12,10 +12,10 @@ class Feedback(gym.Wrapper):
         super().__init__(env)
         self.env = env
         self.step_id = 0
-        self.ask_pref_frequency = 100
+        self.ask_pref_frequency = 10
         self.record = False
         self.clip_length = 20 # how long each clip should be
-        self.save_pref_db_freq = 20 
+        self.save_pref_db_freq = 20
 
 
         self.pref_db = PreferenceDb.get_instance()
@@ -57,7 +57,7 @@ class Feedback(gym.Wrapper):
 
     def step(self, action):
 
-        # print ("Sanity check: in HL wrapper step_id = ", self.step_id, ". In sync?")
+        # print ("Sanity check: in human feedback wrapper step_id = ", self.step_id, ". In sync?")
 
         observation, reward, done, info = self.env.step(action)
 
@@ -106,6 +106,7 @@ class Feedback(gym.Wrapper):
 class HumanFeedback(Feedback):
     def __init__(self, env):
         super().__init__(env)
+        print("--Using human feedback.--")
 
     def _render_video(self, frames1, frames2):
         for i in range(len(frames1)):
@@ -155,6 +156,7 @@ class HumanFeedback(Feedback):
 class SyntheticFeedback(Feedback):
     def __init__(self, env):
         super().__init__(env)
+        print("--Using synthetic feedback.--")
 
     def record_additional_data(self, env_reward = None):
         assert env_reward is not None, "env_reward should not be None when using synthetic feedback."
@@ -165,20 +167,25 @@ class SyntheticFeedback(Feedback):
         total_reward1 = np.sum(self.traj_buffer[0]["env_rewards"])
         total_reward2 = np.sum(self.traj_buffer[1]["env_rewards"])
         if total_reward1 > total_reward2:
-            return 1
+            preference = 1
         elif total_reward1 < total_reward2:
-            return 2
+            preference = 2
         else:
-            return 3
+            preference = 3
+        self.add_preference(self.traj_buffer[0]["observations"],
+                            self.traj_buffer[0]["actions"],
+                            self.traj_buffer[1]["observations"],
+                            self.traj_buffer[1]["actions"],
+                            preference)
+        return
 
 # TEST 
-import gym
-env = HumanFeedback(gym.make('Pendulum-v1'))
-env.reset()
+# env = HumanFeedback(gym.make('Pendulum-v1'))
+# env.reset()
 
-for i in range(400):
-    observation, reward, done, info = env.step(env.action_space.sample())
-    if done:
-        env.reset()
+# for i in range(400):
+#     observation, reward, done, info = env.step(env.action_space.sample())
+#     if done:
+#         env.reset()
 
-print(env.pref_db.db_size)
+# print(env.pref_db.db_size)
