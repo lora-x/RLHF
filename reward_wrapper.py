@@ -1,41 +1,49 @@
 import gym
 import numpy as np
 from network_utils import np2torch 
+from reward_network import RewardNetwork
+from preference_db import PreferenceDb
+import random
 
 class CustomReward(gym.Wrapper):
-    def __init__(self, env, reward_network, initial_observation):
+    def __init__(self, env):
         super().__init__(env)
-        self.reward_network = reward_network
         self.env = env
-        self.prev_observation = initial_observation
+        self.reward_network = RewardNetwork(env)
+        self.prev_observation = env.reset() # initial observation
+        self.update_frequency = 1 # how often to update the reward network
+        self.step_id = 0
 
-    def ask_human(self):
-        """
-        Ask human to provide preference between two trajectories
-        1 = traj1 is more preferable, 2 = traj2 is more preferable, 3 = both are equally preferable
-        if undecidable, do not append the pair of trajs to database. 
-        """
-        preference = -1 # by default, do not append to database
+        self.pref_db = PreferenceDb.get_instance()
 
-        if len(self.trijectories) < 2:
-            return
-        
-        # temporarily using random acion as placeholder -- might need to merge the object??  but this is supposed to be an env wrapper?
-        # how can i not load the whole thing database? 
+    # temporarily using random acion as placeholder -- might need to merge the object??  but this is supposed to be an env wrapper?
+    # how can i not load the whole thing database? 
 
     def step(self, action):
         observation, _, done, info = self.env.step(action)
+        print ("Sanity check: in reward wrapper step_id = ", self.step_id)
+
+        # calculate reward 
         reward_input = np.concatenate([self.prev_observation, action], axis=-1)
         reward_input = np2torch(reward_input)
-        reward = self.reward_network(reward_input)
+        reward = self.reward_network.predict_reward(reward_input)
         reward = reward.detach().numpy() # tensor to numpy
         self.prev_observation = observation
+
+        # may need to update the reward network
+        if self.step_id % self.update_frequency == 0:
+            sampled_traj1s, sampled_traj2s, sampled_preferences = self.sample_preferences()
+            self.reward_network.update_network(sampled_traj1s, sampled_traj2s, sampled_preferences)
+
         return observation, reward, done, info
     
-
-# class Preference(gym.Wrapper):
-#     def __init__(self, env):
-#         super().__init__(env)
-#         self.traj1s = {"observations": [], "actions": []}
-#         self.traj2s = {"observations": [], "actions": []}
-#         self.preferences = []
+    def sample_preferences(self, num_samples):
+        """
+        Sample k pairs with preferences from all recorded preferences
+        """
+        pref_db = self.pref_db
+        indices = random.sample(range(1, pref_db.db_size), min(num_samples, pref_db.db_size))
+        sampled_traj1s = [pref_db.traj1s[i] for i in indices]
+        sampled_traj2s = [pref_db.traj2s[i] for i in indices]
+        sampled_preferences = [pref_db.preferences[i] for i in indices]
+        return sampled_traj1s, sampled_traj2s, sampled_preferences

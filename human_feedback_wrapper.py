@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from network_utils import np2torch 
 import cv2
-import random
+from preference_db import PreferenceDb
 
 class HumanFeedback(gym.Wrapper):
     def __init__(self, env):
@@ -13,23 +13,12 @@ class HumanFeedback(gym.Wrapper):
         self.record = False
         self.clip_length = 10 # how long each clip should be
 
-        # a simple database for preferences
-        # traj1s["observation"][i], traj1s["action"][i], traj2s["observation"][i], traj2s["action"][i], preferences[i] 
-        #   form one pair of trajectories and the corresponding preference
-        self.traj1s = {
-            "observations": [],
-            "actions": [],
-        }
-        self.traj2s = {
-            "observations": [],
-            "actions": [],
-        }
-        self.preferences = []
+
+        self.pref_db = PreferenceDb.get_instance()
 
         # buffer to store current pair of trajectory being recorded
         # this is stored seperately from the sampled paths used to train the policy for modularity (so the policy can be changed to other policies)
         self._reset_traj_buffer()
-
         self.which_traj = 0 # index to record whether the first or second trajectory is being recorded now
 
     """
@@ -47,6 +36,9 @@ class HumanFeedback(gym.Wrapper):
         }] * 2
 
     def step(self, action):
+
+        print ("Sanity check: in HL wrapper step_id = ", self.step_id, ". In sync?")
+
         observation, reward, done, info = self.env.step(action)
 
         if not self.record and self._check_label_schedule(self.step_id):
@@ -98,23 +90,14 @@ class HumanFeedback(gym.Wrapper):
         print("in ask human, traj1 : ", traj1, "type = ", type(traj1))
         self.add_preference(traj1, traj2, preference)
         return
-    
-    def sample_preferences(self, k):
-        """
-        Sample k pairs with preferences from all recorded preferences
-        """
-        db_size = len(self.preferences)
-        indices = random.sample(range(1, db_size), min(k, db_size))
-        sampled_traj1s = [self.traj1s[i] for i in indices]
-        sampled_traj2s = [self.traj2s[i] for i in indices]
-        sampled_preferences = [self.preferences[i] for i in indices]
-        return sampled_traj1s, sampled_traj2s, sampled_preferences
-    
+        
     def add_preference(self, traj1, traj2, preference):
         """
         TODO: is traj1 ndarray or list? should be list. maybe need to convert to list
         Add a pair of trajectories and the corresponding preference to the database
         """
-        self.traj1s.append(traj1)
-        self.traj2s.append(traj2)
-        self.preferences.append(preference)
+        self.pref_db.traj1s.append(traj1)
+        self.pref_db.traj2s.append(traj2)
+        self.pref_db.preferences.append(preference)
+        self.pref_db.db_size += 1
+        

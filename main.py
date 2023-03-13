@@ -46,10 +46,8 @@ REWARD_BATCH_SIZE = 10
 
 if __name__ == "__main__":
     env = gym.make('Pendulum-v1')
-    reward_network = RewardNetwork(env)
-    observation = env.reset() # initial observation
-    env = CustomReward(env, reward_network, observation)
     env = HumanFeedback(env)
+    env = CustomReward(env)
     policy = PolicyGradient(env)
     for batch in NUM_BATCHES:
 

@@ -42,6 +42,7 @@ class PolicyGradient(object):
             self.logger = get_logger(config.log_path)
         self.env = env
         self.env.seed(self.seed)
+        self.gamma = 0.995
 
         # discrete vs continuous action space
         self.discrete = isinstance(env.action_space, gym.spaces.Discrete)
@@ -195,7 +196,8 @@ class PolicyGradient(object):
 
         Note that here we are creating a list of returns for each path
 
-        TODO: compute and return G_t for each timestep. Use self.config.gamma.
+        TODO: --compute and return G_t for each timestep. Use self.config.gamma--
+        >>> RLHF paper uses gamma = 0.995
         """
 
         all_returns = []
@@ -208,7 +210,7 @@ class PolicyGradient(object):
                 if i == len(rewards)-1:
                     G_t = rewards[i]
                 else:
-                    G_t = rewards[i] + self.config.gamma * returns[0]
+                    G_t = rewards[i] + self.gamma * returns[0]
                 returns.insert(0, G_t)
             #######################################################
             #########          END YOUR CODE.          ############
