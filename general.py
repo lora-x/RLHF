@@ -34,6 +34,7 @@ def get_logger(filename):
     """
     logger = logging.getLogger("logger")
     logger.setLevel(logging.DEBUG)
+    logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR) # suppress matplotlib font_manager warnings about missing fonts
     logging.basicConfig(format="%(message)s", level=logging.DEBUG)
     handler = logging.FileHandler(filename)
     handler.setLevel(logging.DEBUG)

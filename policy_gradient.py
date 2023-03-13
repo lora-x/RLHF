@@ -79,6 +79,8 @@ class PolicyGradient(object):
         #######################################################
         #########   YOUR CODE HERE - 8-12 lines.   ############
         network = build_mlp(self.observation_dim, self.action_dim, self.config.n_layers, self.config.layer_size)
+        # TODO add output = a + (tanh(net_output) + 1) / 2 * (b - a)
+        
         if (self.discrete):
             self.policy = CategoricalPolicy(network)
         else:

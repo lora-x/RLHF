@@ -169,7 +169,6 @@ class PPO(PolicyGradient):
                     break
                 if (not num_episodes) and t == self.config.batch_size:
                     break
-
             path = {
                 "observation": np.array(states),
                 "reward": np.array(rewards),
