@@ -5,6 +5,7 @@ import gym
 import itertools
 import copy
 import os
+import math
 from general import get_logger, Progbar, export_plot
 from baseline_network import BaselineNetwork
 from network_utils import build_mlp, device, np2torch
@@ -159,6 +160,8 @@ class PPO(PolicyGradient):
                 assert old_logprob.shape == (1,)
                 action, old_logprob = action[0], old_logprob[0]
                 state, reward, done, info = env.step(action)
+                # if math.isnan(reward):
+                #     print (f"Step {step} in episode {episode} has reward {reward}")
                 actions.append(action)
                 old_logprobs.append(old_logprob)
                 rewards.append(reward)

@@ -7,6 +7,7 @@ from torch.distributions import Categorical, Normal, Independent
 
 import pdb
 import numpy as np
+import math
 
 
 class BasePolicy:
@@ -134,6 +135,7 @@ class GaussianPolicy(BasePolicy, nn.Module):
         #######################################################
         #########   YOUR CODE HERE - 2-4 lines.    ############
         mean = self.network(observations)
+        # print("loc: ", mean)
         std = self.std()
         distribution = Independent(Normal(mean, std), 1)
         #######################################################

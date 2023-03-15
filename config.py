@@ -45,7 +45,7 @@ class config_cartpole:
 class config_pendulum:
     def __init__(self, use_baseline, ppo, seed):
         self.env_name = "InvertedPendulumBulletEnv-v0"
-        self.record = False
+        self.record = True
         baseline_str = ("baseline" if use_baseline else "no_baseline") if not ppo else "ppo"
         seed_str = "seed=" + str(seed)
 
@@ -62,14 +62,14 @@ class config_pendulum:
         self.summary_freq = 1
 
         # model and training config
-        #TEST 
-        self.num_batches = 2  # number of batches trained on
-        self.batch_size = 200  # number of steps used to compute each policy update
-        self.max_ep_len = 100  # maximum episode length
-        #ACTUAL
+        # #TEST 
         # self.num_batches = 100  # number of batches trained on
-        # self.batch_size = 10000  # number of steps used to compute each policy update
-        # self.max_ep_len = 1000  # maximum episode length
+        # self.batch_size = 1000  # number of steps used to compute each policy update
+        # self.max_ep_len = 200 # maximum episode length
+        # ACTUAL
+        self.num_batches = 10  # number of batches trained on
+        self.batch_size = 10000  # number of steps used to compute each policy update
+        self.max_ep_len = 1000  # maximum episode length
         self.learning_rate = 3e-2
         self.gamma = 1.0  # the discount factor
         self.use_baseline = use_baseline

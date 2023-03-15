@@ -384,7 +384,7 @@ class PolicyGradient(object):
         env = gym.wrappers.Monitor(
             env, self.config.record_path, video_callable=lambda x: True, resume=True
         )
-        self.evaluate(env, 1)
+        # self.evaluate(env, 1)
 
     def run(self):
         """

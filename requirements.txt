@@ -9,3 +9,4 @@ tensorboard==2.11.0
 opencv-python
 pyglet==1.5.27
 moviepy
+wandb

@@ -13,8 +13,8 @@ class FeedbackReward(gym.Wrapper):
         self.synthetic_feedback = synthetic_feedback
         self.reward_network = RewardNetwork(env)
         self.prev_observation = env.reset() # initial observation
-        self.update_frequency = 50 # how often to update the reward network
-        self.batch_size = 10 # how many samples to use to update the reward network
+        self.update_frequency = 20 # how often to update the reward network
+        self.batch_size = 64 # how many samples to use to update the reward network
         self.step_id = 0
 
         self.pref_db = PreferenceDb.get_instance()
@@ -34,13 +34,14 @@ class FeedbackReward(gym.Wrapper):
         # calculate reward 
         reward_input = np.concatenate([self.prev_observation, action], axis=-1)
         reward_input = np2torch(reward_input)
+        # reward_input = np2torch(np.expand_dims(reward_input, axis = 0)) # now dim = 1 x (obs dim + act dim), bc network expects a non-empty batch size 
         reward = self.reward_network.predict_reward(reward_input)
         reward = reward.detach().numpy() # tensor to numpy
         self.prev_observation = observation
 
         # update the reward network at given frequency
         if self.pref_db.db_size > 0 and self.step_id % self.update_frequency == 0:
-            print(f"At step {self.step_id}, updating reward network...")
+            # print(f"At step {self.step_id}, updating reward network...")
             sampled_traj1s, sampled_traj2s, sampled_preferences = self.sample_preferences(self.batch_size)
             self.reward_network.update_network(sampled_traj1s, sampled_traj2s, sampled_preferences)
 

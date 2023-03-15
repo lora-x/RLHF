@@ -3,6 +3,7 @@ import numpy as np
 from network_utils import np2torch 
 import cv2
 from preference_db import PreferenceDb
+import random
 
 """
 Base class for HumanFeedback and SyntheticFeedback
@@ -15,7 +16,8 @@ class Feedback(gym.Wrapper):
         self.ask_pref_frequency = 10
         self.record = False
         self.clip_length = 20 # how long each clip should be
-        self.save_pref_db_freq = 20
+        self.save_pref_db_freq = 100
+        self.max_db_size = 1000
 
 
         self.pref_db = PreferenceDb.get_instance()
@@ -25,11 +27,10 @@ class Feedback(gym.Wrapper):
         self.__reset_traj_buffer()
         self.which_traj = 0 # index to record whether the first or second trajectory is being recorded now
 
-    """
-    TODO: make sure clip_length is not too long compared to the labeling frequency
-    TODO: implement actual labeling schedule ??
-    """
-    def __check_label_schedule(self, step_id):
+    def __check_ask_schedule(self, step_id):
+        """
+        TODO: implement actual labeling schedule. Idea: at given timestep, should have a certain number of preferences stored
+        """
         return step_id % int(self.ask_pref_frequency/2) == 0
     
     def __reset_traj_buffer(self):
@@ -61,7 +62,7 @@ class Feedback(gym.Wrapper):
 
         observation, reward, done, info = self.env.step(action)
 
-        if not self.record and self.__check_label_schedule(self.step_id):
+        if not self.record and self.__check_ask_schedule(self.step_id):
             self.record = True # start recording
         
         if self.record:
@@ -92,12 +93,20 @@ class Feedback(gym.Wrapper):
         obs1 etc is a list (length clip_length) of ndarrays (size obs_dim) 
         Add a pair of trajectories and the corresponding preference to the database
         """
-        self.pref_db.traj1s["observations"].append(obs1)
-        self.pref_db.traj1s["actions"].append(acts1)
-        self.pref_db.traj2s["observations"].append(obs2)
-        self.pref_db.traj2s["actions"].append(acts2)
-        self.pref_db.preferences.append(preference)
-        self.pref_db.db_size += 1
+        if self.pref_db.db_size > self.max_db_size: # makes sure db size doesn't exceed max
+            index = random.randint(0, self.max_db_size)
+            self.pref_db.traj1s["observations"][index] = obs1
+            self.pref_db.traj2s["observations"][index] = obs1
+            self.pref_db.traj1s["actions"][index] = acts1
+            self.pref_db.traj2s["actions"][index] = acts2
+            self.pref_db.preferences[index] = preference
+        else:
+            self.pref_db.traj1s["observations"].append(obs1)
+            self.pref_db.traj1s["actions"].append(acts1)
+            self.pref_db.traj2s["observations"].append(obs2)
+            self.pref_db.traj2s["actions"].append(acts2)
+            self.pref_db.preferences.append(preference)
+            self.pref_db.db_size += 1
         if self.pref_db.db_size % self.save_pref_db_freq == 0:
             print (f"{self.pref_db.db_size} preferences collected. Saving database to json...")
             # TODO: placeholder for env name

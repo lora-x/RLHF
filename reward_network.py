@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import gym
 from network_utils import np2torch
+import wandb
+import math
 
 class RewardNetwork(nn.Module):
     """
@@ -25,7 +27,9 @@ class RewardNetwork(nn.Module):
             nn.LeakyReLU(negative_slope=0.01),
             nn.Linear(64, 64),
             nn.LeakyReLU(negative_slope=0.01),
-            nn.Linear(64, 1)
+            nn.Linear(64, 1),
+            # nn.Tanh() # this makes rewards predominantly -1 or 1
+            # nn.BatchNorm1d(1) # this messes with reward prediction for a single step
         )
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr = self.lr)
 
@@ -63,19 +67,41 @@ class RewardNetwork(nn.Module):
                                                 [[0, 2, 3], [4, 5, 6]]],
                                                 dtype=float), "actions": np.array([[[1],[1]],[[1],[1]],[[1],[1]]], dtype=float)}
         test_preferences = np.array([3, 1, 2])
+        
+        P(s1 > s2) = exp(R(s1)) / (exp(R(s1)) + exp(R(s2))) 
+        so log P(s1 > s2) = R(s1) - log(exp(R(s1)) + exp(R(s2)))
+
+        for a numerically stable implementation, we subtract max(R(s1), R(s2)) from both R(s1) and R(s2) before computing the exponential
+        this does not change the ordering
+        see proof at https://jaykmody.com/blog/stable-softmax/
+        
         """
+
+        # wandb.init(
+        #     project="RLHF",
+        # )
+
         traj1_reward = self.__traj_to_reward(traj1)
         traj2_reward = self.__traj_to_reward(traj2)
-        p1 = torch.log((traj1_reward)/(traj1_reward + traj2_reward))
-        p2 = torch.log((traj2_reward)/(traj1_reward + traj2_reward))
-        mu1, mu2 = self.__mu(preferences)
+        traj_rewards = torch.stack((traj1_reward, traj2_reward), dim=-1)
 
-        loss = - torch.sum(p1 * mu1 + p2 * mu2)
-        print("loss: ", loss)
+        mu1, mu2 = self.__mu(preferences)
+        actual_mu = torch.stack((mu1, mu2), dim=-1)
+
+
+        loss_fn = nn.CrossEntropyLoss()
+        loss = loss_fn(traj_rewards, actual_mu)
+        # print("loss: ", loss.item())
+        # wandb.log({"reward network loss": loss.item()})
+
+        accuracy = torch.sum(torch.eq(torch.argmax(traj_rewards, dim = -1), torch.argmax(actual_mu, dim = -1))).item() / len(preferences)
+        # print("accuracy: ", accuracy)
+        # wandb.log({"reward network accuracy": accuracy})
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
     
     def __mu(self, preferences): # preferences input dim = [batch size]
         preferences = np.asarray(preferences, dtype=np.float32)
@@ -83,14 +109,16 @@ class RewardNetwork(nn.Module):
         mu2 = np.piecewise(preferences, [preferences == 1, preferences == 2, preferences == 3], [0, 1, 1/2])
         return np2torch(mu1), np2torch(mu2)
     
-    def __traj_to_reward(self, traj, exponential = True):
+    def __traj_to_reward(self, traj):
         observations = np.asarray(traj["observations"], dtype=np.float32)
         actions = np.asarray(traj["actions"], dtype=np.float32)
         reward_input = np2torch(np.concatenate((observations, actions), axis = -1)) # now dim = batch size x traj length x (obs dim + act dim)
         traj_reward = self.predict_reward(reward_input) # shape = [batch size, traj length]
         traj_reward = torch.sum(traj_reward, dim = -1) # sum over the trajectory, for each t. Now dim = [batch size]
-        if exponential:
-            traj_reward = torch.exp(traj_reward)
+        # make sure has size [batch size] even when batch size = 1
+        if traj_reward.size() == torch.Size([]):
+            traj_reward = torch.unsqueeze(traj_reward, dim = 0)
+            assert traj_reward.size() == torch.Size([1])
         return traj_reward
     
 
@@ -105,3 +133,35 @@ class RewardNetwork(nn.Module):
 # test_preferences = [3, 1, 2]
 # test_reward_network = RewardNetwork(gym.make('Pendulum-v1'))
 # test_reward_network.update_network(test_traj1, test_traj2, test_preferences)
+
+
+        # ==================== OLD CODE ====================
+
+        # # log softmax, see derivation at https://jaykmody.com/blog/stable-softmax/
+        # max_rewards = torch.max(rewards, dim = -1)
+        # max_rewards = max_rewards.values
+        # log_predicted_mu = rewards - max_rewards - torch.log(torch.sum(torch.exp(rewards - max_rewards), dim = -1))
+        
+        # print("log_predicted_mu: ", log_predicted_mu)
+        # print("actual_mu: ", actual_mu)
+
+        # loss = - torch.sum(torch.mul(traj_rewards, actual_mu))
+        # if math.isnan(loss.item()):
+        #     print("loss is nan")
+        #     print("log_sum: ", log_sum)
+        # if math.isnan(mean[0].item()): # debug weights
+
+        # for name, param in self.network.named_parameters():
+        #     if name == "0.bias":
+        #         print(name, param.data)
+
+        # ==================== OLD OLD CODE ====================
+
+        # max_reward = torch.max(traj1_reward, traj2_reward)
+        # print("traj1 exp: ", torch.exp(traj1_reward - max_reward))
+        # print("traj2 exp: ", torch.exp(traj2_reward - max_reward))
+        # print("sum of exp: ", torch.exp(traj1_reward - max_reward) + torch.exp(traj2_reward - max_reward))
+        # log_sum = torch.log(torch.exp(traj1_reward - max_reward) + torch.exp(traj2_reward - max_reward))
+        # print("log_sum: ", log_sum)
+        # log_p1 = traj1_reward - log_sum
+        # log_p2 = traj2_reward - log_sum
