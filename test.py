@@ -32,6 +32,8 @@ ppo = PPO(env, eval_env, config, seed = 1)
 
 ppo.train()
 
+print("training done")
+
 # evaluation
 
 # wandb.init(
@@ -42,6 +44,7 @@ total_reward = 0
 
 
 for i in range(200):
+    print("stepping eval env")
     observation, reward, done, info = eval_env.step(ppo.policy.act(observation))
     eval_env.render(mode = "human")
     total_reward += reward

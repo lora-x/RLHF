@@ -20,6 +20,7 @@ class PPO(PolicyGradient):
         self.eval_env = eval_env
         self.eps_clip = self.config.eps_clip
         self.eval_num_episodes = 10
+        self.config.entropy_bonus = 0.01
 
     def update_policy(self, observations, actions, advantages, old_logprobs):
         """
@@ -165,6 +166,7 @@ class PPO(PolicyGradient):
                 assert old_logprob.shape == (1,)
                 action, old_logprob = action[0], old_logprob[0]
                 state, reward, done, info = env.step(action)
+
                 # if num_episodes:
                     # print("reward", reward.item())
                 actions.append(action)
@@ -177,6 +179,12 @@ class PPO(PolicyGradient):
                     break
                 if (not num_episodes) and t == self.config.batch_size:
                     break
+
+            # add entropy bonus
+            entropy = self.policy.action_distribution(observations=torch.Tensor(states)).entropy()
+            # print("entropy = ", entropy)
+            rewards = np.array(rewards) + self.config.entropy_bonus * entropy.detach().numpy()
+
             path = {
                 "observation": np.array(states),
                 "reward": np.array(rewards),
