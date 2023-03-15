@@ -14,10 +14,12 @@ from policy_gradient import PolicyGradient
 
 class PPO(PolicyGradient):
 
-    def __init__(self, env, config, seed, logger=None):
+    def __init__(self, env, eval_env, config, seed, logger=None):
         config.use_baseline = True
         super(PPO, self).__init__(env, config, seed, logger)
+        self.eval_env = eval_env
         self.eps_clip = self.config.eps_clip
+        self.eval_num_episodes = 10
 
     def update_policy(self, observations, actions, advantages, old_logprobs):
         """
@@ -68,7 +70,7 @@ class PPO(PolicyGradient):
         last_record = 0
 
         self.init_averages()
-        all_total_rewards = (
+        all_eval_total_rewards = (
             []
         )  # the returns of all episodes samples for training purposes
         averaged_total_rewards = []  # the returns for each iteration
@@ -77,7 +79,8 @@ class PPO(PolicyGradient):
 
             # collect a minibatch of samples
             paths, total_rewards = self.sample_path(self.env)
-            all_total_rewards.extend(total_rewards)
+            eval_paths, total_eval_rewards = self.sample_path(self.eval_env, num_episodes = self.eval_num_episodes)
+            all_eval_total_rewards.extend(total_eval_rewards)
             observations = np.concatenate([path["observation"] for path in paths])
             actions = np.concatenate([path["action"] for path in paths])
             rewards = np.concatenate([path["reward"] for path in paths])
@@ -95,12 +98,13 @@ class PPO(PolicyGradient):
 
             # logging
             if t % self.config.summary_freq == 0:
-                self.update_averages(total_rewards, all_total_rewards)
+                self.update_averages(total_eval_rewards, all_eval_total_rewards)
                 self.record_summary(t)
 
             # compute reward statistics for this batch and log
-            avg_reward = np.mean(total_rewards)
-            sigma_reward = np.sqrt(np.var(total_rewards) / len(total_rewards))
+            # TODO: adjust for test env
+            avg_reward = np.mean(total_eval_rewards)
+            sigma_reward = np.sqrt(np.var(total_eval_rewards) / len(total_eval_rewards))
             msg = "[ITERATION {}]: Average reward: {:04.2f} +/- {:04.2f}".format(
                     t, avg_reward, sigma_reward
             )
@@ -156,12 +160,13 @@ class PPO(PolicyGradient):
                 states.append(state)
                 # Note the difference between this line and the corresponding line
                 # in PolicyGradient.
+                # print("state: ", state)
                 action, old_logprob = self.policy.act(states[-1][None], return_log_prob = True)
                 assert old_logprob.shape == (1,)
                 action, old_logprob = action[0], old_logprob[0]
                 state, reward, done, info = env.step(action)
-                # if math.isnan(reward):
-                #     print (f"Step {step} in episode {episode} has reward {reward}")
+                # if num_episodes:
+                    # print("reward", reward.item())
                 actions.append(action)
                 old_logprobs.append(old_logprob)
                 rewards.append(reward)

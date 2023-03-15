@@ -93,7 +93,7 @@ class GaussianPolicy(BasePolicy, nn.Module):
         initial std of 1), but you are welcome to try different values.
         """
         nn.Module.__init__(self)
-        self.network = nn.Sequential(network)
+        self.network = network
         #######################################################
         #########   YOUR CODE HERE - 1 line.       ############
         self.log_std = nn.Parameter(torch.zeros(action_dim))
@@ -134,8 +134,12 @@ class GaussianPolicy(BasePolicy, nn.Module):
         """
         #######################################################
         #########   YOUR CODE HERE - 2-4 lines.    ############
+        # to make sure the output is in the range of action space
+        # print("obs shape = ", observations.shape)
+        # print("obs = ", observations)
         mean = self.network(observations)
         # print("loc: ", mean)
+        # print("tanh loc: ", torch.tanh(mean))
         std = self.std()
         distribution = Independent(Normal(mean, std), 1)
         #######################################################

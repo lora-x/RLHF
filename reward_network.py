@@ -5,6 +5,7 @@ import gym
 from network_utils import np2torch
 import wandb
 import math
+import random
 
 class RewardNetwork(nn.Module):
     """
@@ -29,14 +30,21 @@ class RewardNetwork(nn.Module):
             nn.LeakyReLU(negative_slope=0.01),
             nn.Linear(64, 1),
             # nn.Tanh() # this makes rewards predominantly -1 or 1
-            # nn.BatchNorm1d(1) # this messes with reward prediction for a single step
+            nn.BatchNorm1d(1, affine=False),
         )
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr = self.lr)
 
 
-    def predict_reward(self, reward_input):
+    def predict_reward(self, reward_input, inference = False):
         # squeeze the result so it's either [batch size] * [traj_length] or just for torch.Size([]) i.e. a scalar reward for a single (obs, action) pair
-        output = self.network(reward_input).squeeze() 
+        if inference:
+            with torch.no_grad():
+                self.network.eval()
+                reward_input = torch.unsqueeze(reward_input, 0)
+                output = self.network(reward_input).squeeze()
+                self.network.train()
+        else:
+            output = self.network(reward_input).squeeze() 
         return output
         
 
@@ -91,12 +99,11 @@ class RewardNetwork(nn.Module):
 
         loss_fn = nn.CrossEntropyLoss()
         loss = loss_fn(traj_rewards, actual_mu)
-        # print("loss: ", loss.item())
-        # wandb.log({"reward network loss": loss.item()})
 
         accuracy = torch.sum(torch.eq(torch.argmax(traj_rewards, dim = -1), torch.argmax(actual_mu, dim = -1))).item() / len(preferences)
-        # print("accuracy: ", accuracy)
-        # wandb.log({"reward network accuracy": accuracy})
+        # if random.uniform(0, 1) < 0.01:
+        #     print("accuracy: ", accuracy)
+        
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -110,10 +117,15 @@ class RewardNetwork(nn.Module):
         return np2torch(mu1), np2torch(mu2)
     
     def __traj_to_reward(self, traj):
-        observations = np.asarray(traj["observations"], dtype=np.float32)
+        observations = traj["observations"]
+        observations = np.asarray(observations, dtype=np.float32)
+        # print(observations.shape)
         actions = np.asarray(traj["actions"], dtype=np.float32)
         reward_input = np2torch(np.concatenate((observations, actions), axis = -1)) # now dim = batch size x traj length x (obs dim + act dim)
+        batch_size, traj_length, input_dim = reward_input.shape
+        reward_input = reward_input.view(-1, reward_input.shape[-1]) # now dim = (batch size * traj length) x (obs dim + act dim)
         traj_reward = self.predict_reward(reward_input) # shape = [batch size, traj length]
+        traj_reward = traj_reward.view(batch_size, traj_length) # now dim = batch size x traj length
         traj_reward = torch.sum(traj_reward, dim = -1) # sum over the trajectory, for each t. Now dim = [batch size]
         # make sure has size [batch size] even when batch size = 1
         if traj_reward.size() == torch.Size([]):

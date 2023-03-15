@@ -13,9 +13,9 @@ class Feedback(gym.Wrapper):
         super().__init__(env)
         self.env = env
         self.step_id = 0
-        self.ask_pref_frequency = 10
+        self.ask_pref_frequency = 100
         self.record = False
-        self.clip_length = 20 # how long each clip should be
+        self.clip_length = 50 # how long each clip should be
         self.save_pref_db_freq = 100
         self.max_db_size = 1000
 
@@ -76,12 +76,14 @@ class Feedback(gym.Wrapper):
             if self.traj_buffer[i]["num_frames"] == self.clip_length or done:
                 self.record = False # stop recording
                 if self.which_traj == 1: # if this is already the second traj, i.e. have two full trajs, ask human for preference
-                    if self.traj_buffer[0]["num_frames"] == self.traj_buffer[1]["num_frames"]: # ask only if the two trajs have the same length
+                    if self.traj_buffer[0]["num_frames"] == self.clip_length and self.traj_buffer[1]["num_frames"] == self.clip_length: # ask only if the two trajs have the same length
                         self.ask_preference()
                     self.__reset_traj_buffer()
                 self.which_traj = 1 - self.which_traj # next time record the other trajectory
 
         self.step_id += 1
+
+        # print ("in feedback wrapper, output observation = ", observation)
 
         return observation, reward, done, info
     

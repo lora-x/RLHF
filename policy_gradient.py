@@ -7,9 +7,9 @@ from baseline_network import BaselineNetwork
 from network_utils import build_mlp, device, np2torch
 from policy import CategoricalPolicy, GaussianPolicy
 import pdb
+# import wandb
 
-def placeholder_policy (env, observation):
-    return env.action_space.sample()
+
 
 class PolicyGradient(object):
     """
@@ -79,6 +79,7 @@ class PolicyGradient(object):
         """
         #######################################################
         #########   YOUR CODE HERE - 8-12 lines.   ############
+        # print("building mlp, observ dim = ", self.observation_dim)
         network = build_mlp(self.observation_dim, self.action_dim, self.config.n_layers, self.config.layer_size)
         # TODO add output = a + (tanh(net_output) + 1) / 2 * (b - a)
         
@@ -109,6 +110,10 @@ class PolicyGradient(object):
             scores_eval: list
         """
         self.avg_reward = np.mean(rewards)
+        # wandb.init(
+        #     project="RLHF",
+        # )
+        # wandb.log({"avg agent reward during training": self.avg_reward})
         self.max_reward = np.max(rewards)
         self.std_reward = np.sqrt(np.var(rewards) / len(rewards))
 

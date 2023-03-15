@@ -24,7 +24,7 @@ class FeedbackReward(gym.Wrapper):
 
     def step(self, action):
         observation, env_reward, done, info = self.env.step(action) # env reward is the algorithmically generated real reward by the original environment
-
+        # print ("in reward wrapper,input observation = ", observation)
         if self.synthetic_feedback == "true":
             # add original reward info so it can be used in the feedback wrapper
             info["env_reward"] = env_reward
@@ -35,7 +35,7 @@ class FeedbackReward(gym.Wrapper):
         reward_input = np.concatenate([self.prev_observation, action], axis=-1)
         reward_input = np2torch(reward_input)
         # reward_input = np2torch(np.expand_dims(reward_input, axis = 0)) # now dim = 1 x (obs dim + act dim), bc network expects a non-empty batch size 
-        reward = self.reward_network.predict_reward(reward_input)
+        reward = self.reward_network.predict_reward(reward_input, inference=True) # turn on eval mode so reward network doesn't do batch norm, avoid dimension mismatch
         reward = reward.detach().numpy() # tensor to numpy
         self.prev_observation = observation
 
@@ -47,6 +47,7 @@ class FeedbackReward(gym.Wrapper):
 
         self.step_id += 1
 
+        # print("in reward wrapper, output observation = ", observation)
         return observation, reward, done, info
     
     def sample_preferences(self, num_samples):
