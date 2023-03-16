@@ -25,7 +25,8 @@ class PreferenceDb(object):
                 "actions": [],
             }
             self.preferences = []
-            self.db_size = 0
+            self.db_size = 0 # current size
+            # self.total_labeled = 0 # total number of preferences collected, including those discarded
             PreferenceDb._instance = self
 
     @staticmethod

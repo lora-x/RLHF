@@ -62,7 +62,7 @@ class config_pendulum:
         self.record_freq = 5
         self.summary_freq = 1
 
-        self.num_batches = 20  # number of batches trained on
+        self.num_batches = 50  # number of batches trained on
         self.batch_size = 10000  # number of steps used to compute each policy update
         self.max_ep_len = 1000  # maximum episode length
         self.learning_rate = 3e-2

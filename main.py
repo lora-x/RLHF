@@ -28,20 +28,25 @@ parser.set_defaults(use_baseline=True)
 
 
 if __name__ == "__main__":
+
     args = parser.parse_args()
 
     torch.random.manual_seed(args.seed)
     np.random.seed(args.seed)
     random.seed(args.seed)
 
+    print("\n" * 5, "=================================\n", "\n" * 5)
+
     config = get_config(args.env_name, args.seed, args.entropy)
-    eval_env = gym.make(config.env_name)
-    if args.synthetic:
-        env = SyntheticFeedback(FeedbackReward(gym.make(config.env_name), synthetic_feedback = "true"))
-    else:
-        env = HumanFeedback(FeedbackReward(gym.make(config.env_name), synthetic_feedback = "false"))
-    env = gym.make(config.env_name)
-    # train model
-    model = PPO(env, eval_env, config, args.seed)
-    model.run()
     
+    if args.synthetic:
+        env = SyntheticFeedback(FeedbackReward(gym.make(config.env_name), synthetic_feedback = True))
+    else:
+        env = HumanFeedback(FeedbackReward(gym.make(config.env_name), synthetic_feedback = False))
+    eval_env = gym.make(config.env_name)
+    
+    # train model
+    env.reset()
+    eval_env.reset()
+    model = PPO(env, eval_env, config, args.seed)
+    model.train()

@@ -18,6 +18,7 @@ class Feedback(gym.Wrapper):
         self.clip_length = 50 # how long each clip should be
         self.save_pref_db_freq = 100
         self.max_db_size = 1000
+        self.label_schedule = 2e6 # after T frames, rate of labeling should be 2e6 / (T + 2e6)
 
 
         self.pref_db = PreferenceDb.get_instance()
@@ -31,7 +32,11 @@ class Feedback(gym.Wrapper):
         """
         TODO: implement actual labeling schedule. Idea: at given timestep, should have a certain number of preferences stored
         """
-        return step_id % int(self.ask_pref_frequency/2) == 0
+        rate = (step_id + self.label_schedule) // self.label_schedule
+        if (rate > 1):
+            print ("rate > 1: ", rate)
+        return step_id % rate == 0
+        # return step_id % int(self.ask_pref_frequency/2) == 0
     
     def __reset_traj_buffer(self):
         self.traj_buffer = [{
@@ -57,8 +62,6 @@ class Feedback(gym.Wrapper):
         raise NotImplementedError
 
     def step(self, action):
-
-        # print ("Sanity check: in human feedback wrapper step_id = ", self.step_id, ". In sync?")
 
         observation, reward, done, info = self.env.step(action)
 

@@ -362,7 +362,7 @@ class PolicyGradient(object):
         export_plot(
             averaged_total_rewards,
             "Score",
-            self.config.env_name,
+            self.config.env_name + "-" + self.config.entropy,
             self.config.plot_output,
         )
 

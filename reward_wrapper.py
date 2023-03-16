@@ -7,7 +7,7 @@ import random
 import json
 
 class FeedbackReward(gym.Wrapper):
-    def __init__(self, env, synthetic_feedback = "false"): # by default uses human feedback
+    def __init__(self, env, synthetic_feedback = False): # by default uses human feedback
         super().__init__(env)
         self.env = env
         self.synthetic_feedback = synthetic_feedback
@@ -19,13 +19,10 @@ class FeedbackReward(gym.Wrapper):
 
         self.pref_db = PreferenceDb.get_instance()
 
-    # temporarily using random acion as placeholder -- might need to merge the object??  but this is supposed to be an env wrapper?
-    # how can i not load the whole thing database? 
-
     def step(self, action):
         observation, env_reward, done, info = self.env.step(action) # env reward is the algorithmically generated real reward by the original environment
         # print ("in reward wrapper,input observation = ", observation)
-        if self.synthetic_feedback == "true":
+        if self.synthetic_feedback:
             # add original reward info so it can be used in the feedback wrapper
             info["env_reward"] = env_reward
 
