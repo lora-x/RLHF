@@ -20,7 +20,7 @@ class PPO(PolicyGradient):
         self.eval_env = eval_env
         self.eps_clip = self.config.eps_clip
         self.eval_num_episodes = 10
-        self.config.entropy_bonus = 0.01
+        self.config.entropy_bonus = config.entropy
 
     def update_policy(self, observations, actions, advantages, old_logprobs):
         """
@@ -118,6 +118,7 @@ class PPO(PolicyGradient):
                 self.record()
 
         self.logger.info("- Training done.")
+        self.logger.info("Saving model to {}".format(self.config.scores_output))
         np.save(self.config.scores_output, averaged_total_rewards)
         export_plot(
             averaged_total_rewards,
@@ -181,7 +182,7 @@ class PPO(PolicyGradient):
                     break
 
             # add entropy bonus
-            entropy = self.policy.action_distribution(observations=torch.Tensor(states)).entropy()
+            entropy = self.policy.action_distribution(observations=torch.Tensor(np.array(states))).entropy()
             # print("entropy = ", entropy)
             rewards = np.array(rewards) + self.config.entropy_bonus * entropy.detach().numpy()
 

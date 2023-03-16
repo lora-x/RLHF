@@ -7,6 +7,7 @@ from policy_gradient import PolicyGradient
 from config import get_config
 import random
 import wandb
+import time
 
 
 # networks
@@ -21,48 +22,40 @@ from reward_wrapper import FeedbackReward
 
 print("\n" * 5, "=================================\n", "\n" * 5)
 
-
-env = SyntheticFeedback(FeedbackReward(gym.make("InvertedPendulumBulletEnv-v0"), synthetic_feedback = "true"))
+bullet_env = "InvertedPendulumBulletEnv-v0"
+pendulum = "Pendulum-v1"
+env = SyntheticFeedback(FeedbackReward(gym.make(pendulum), synthetic_feedback = "true"))
 env.reset()
 
-eval_env = gym.make("InvertedPendulumBulletEnv-v0")
+eval_env = gym.make(pendulum)
+eval_env.reset()
 observation = eval_env.reset()
+
 config = get_config("pendulum", True, True)
 ppo = PPO(env, eval_env, config, seed = 1)
+
 
 ppo.train()
 
 print("training done")
 
-# evaluation
+# # evaluation
 
-# wandb.init(
-#     project="RLHF",
-# )
+# # wandb.init(
+# #     project="RLHF",
+# # )
 
 total_reward = 0
+done = False 
+eval_env.reset()
 
-
-for i in range(200):
-    print("stepping eval env")
-    observation, reward, done, info = eval_env.step(ppo.policy.act(observation))
+while not done:
     eval_env.render(mode = "human")
+    observation, reward, done, info = eval_env.step(ppo.policy.act(observation))
     total_reward += reward
     # wandb.log({"eval env reward" : reward})
     # if i > 0:
     #     wandb.log({"avg eval env reward" : total_reward/i})
-    if done:
-        eval_env.reset()
-
 
 eval_env.close()
-
-
-
-# for i in range(1000):
-#     observation, reward, done, info = env.step(env.action_space.sample())
-#     wandb.log({"predicted reward" : reward})
-#     wandb.log({"env reward" : info["env_reward"]})
-#     if done:
-#         env.reset()
-
+print("total reward = ", total_reward)

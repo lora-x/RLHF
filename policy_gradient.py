@@ -356,6 +356,7 @@ class PolicyGradient(object):
                 last_record = 0
                 self.record()
 
+        self.logger.info("Saving model to {}".format(self.config.scores_output))
         self.logger.info("- Training done.")
         np.save(self.config.scores_output, averaged_total_rewards)
         export_plot(

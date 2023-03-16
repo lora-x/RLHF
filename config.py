@@ -43,15 +43,16 @@ class config_cartpole:
 
 
 class config_pendulum:
-    def __init__(self, use_baseline, ppo, seed):
-        self.env_name = "InvertedPendulumBulletEnv-v0"
+    def __init__(self, seed, entropy = 0.05):
+        self.env_name = "Pendulum-v1"
         self.record = True
-        baseline_str = ("baseline" if use_baseline else "no_baseline") if not ppo else "ppo"
+        self.entropy = entropy
         seed_str = "seed=" + str(seed)
+        entropy_str = "{self.entropy}"
 
         # output config
         self.output_path = "results/{}-{}-{}/".format(
-            self.env_name, baseline_str, seed_str
+            self.env_name, entropy, seed_str
         )
         self.model_output = self.output_path + "model.weights/"
         self.log_path = self.output_path + "log.txt"
@@ -61,18 +62,12 @@ class config_pendulum:
         self.record_freq = 5
         self.summary_freq = 1
 
-        # model and training config
-        # #TEST 
-        # self.num_batches = 100  # number of batches trained on
-        # self.batch_size = 1000  # number of steps used to compute each policy update
-        # self.max_ep_len = 200 # maximum episode length
-        # ACTUAL
-        self.num_batches = 10  # number of batches trained on
+        self.num_batches = 20  # number of batches trained on
         self.batch_size = 10000  # number of steps used to compute each policy update
         self.max_ep_len = 1000  # maximum episode length
         self.learning_rate = 3e-2
         self.gamma = 1.0  # the discount factor
-        self.use_baseline = use_baseline
+        self.use_baseline = True
         self.normalize_advantage = True
 
         # parameters for the policy and baseline models
@@ -131,10 +126,10 @@ class config_cheetah:
             self.max_ep_len = self.batch_size
 
 
-def get_config(env_name, baseline, ppo, seed=15):
+def get_config(env_name, seed=15, entropy=0.05):
     if env_name == "cartpole":
-        return config_cartpole(baseline, ppo, seed)
+        return config_cartpole(seed, entropy)
     elif env_name == "pendulum":
-        return config_pendulum(baseline, ppo, seed)
+        return config_pendulum(seed, entropy)
     elif env_name == "cheetah":
-        return config_cheetah(baseline, ppo, seed)
+        return config_cheetah(seed, entropy)
