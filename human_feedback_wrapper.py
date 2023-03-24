@@ -9,34 +9,54 @@ import random
 Base class for HumanFeedback and SyntheticFeedback
 """
 class Feedback(gym.Wrapper):
-    def __init__(self, env): # by default uses human feedback
+    def __init__(self, env, config): # by default uses human feedback
         super().__init__(env)
         self.env = env
         self.step_id = 0
-        self.ask_pref_frequency = 100
         self.record = False
-        self.clip_length = 50 # how long each clip should be
-        self.save_pref_db_freq = 100
-        self.max_db_size = 1000
-        self.label_schedule = 2e6 # after T frames, rate of labeling should be 2e6 / (T + 2e6)
-
-
         self.pref_db = PreferenceDb.get_instance()
 
         # buffer to store current pair of trajectory being recorded
         # this is stored seperately from the sampled paths used to train the policy for modularity (so the policy can be changed to other policies)
         self.__reset_traj_buffer()
         self.which_traj = 0 # index to record whether the first or second trajectory is being recorded now
+    
+        # below subject to change
+
+        self.clip_length = 10 # how long each clip should be
+        self.save_pref_db_freq = 100
+        self.max_db_size = 1000
+        # ask frequency related
+        self.ask_frequency_decay = False
+        self.constant_ask_frequency = config.constant_ask_frequency
+        self.label_schedule = 2e6 # after T frames, rate of labeling should be 2e6 / (T + 2e6)
+        self.collect_initial = config.collect_initial # type int. collect some preferences to train the reward function before training agent
+
+        if self.collect_initial:
+            self.__collect_initial_preferences()
+
+        print("Collect a preference every {} steps".format(self.constant_ask_frequency))
+        print("Clip length = ", self.clip_length)
+
+    def __collect_initial_preferences(self):
+        print("collecting initial preferences...")
+        while self.pref_db.db_size < self.collect_initial:
+            observation, reward, done, info = self.step(self.env.action_space.sample()) # take random action
+            if done:
+                self.env.reset()
+        return
 
     def __check_ask_schedule(self, step_id):
         """
         TODO: implement actual labeling schedule. Idea: at given timestep, should have a certain number of preferences stored
         """
-        rate = (step_id + self.label_schedule) // self.label_schedule
-        if (rate > 1):
-            print ("rate > 1: ", rate)
-        return step_id % rate == 0
-        # return step_id % int(self.ask_pref_frequency/2) == 0
+        if self.ask_frequency_decay:
+            rate = (step_id + self.label_schedule) // self.label_schedule # after T frames, rate of labeling should be 2e6 / (T + 2e6)
+            if (rate > 1):
+                print ("rate > 1: ", rate)
+            return step_id % rate == 0
+        else: # constant ask frequency
+            return step_id % int(self.constant_ask_frequency/2) == 0
     
     def __reset_traj_buffer(self):
         self.traj_buffer = [{
@@ -48,8 +68,8 @@ class Feedback(gym.Wrapper):
         },
         {
             "observations": [],
-            "env_rewards": [],
             "actions": [],
+            "env_rewards": [],
             "frames": [],
             "num_frames": 0,
         }] # can't do [{}]*2 because it will create two references to the same dictionary
@@ -76,6 +96,7 @@ class Feedback(gym.Wrapper):
             self.traj_buffer[i]["num_frames"] += 1
             self.record_additional_data(env_reward = info.get("env_reward", None))
 
+            # print("recording traj ", i, " frame ", self.traj_buffer[i]["num_frames"]) # debug: if some env episode always terminates before clip_length is reached, then never have equal lengths and so never ask preference
             if self.traj_buffer[i]["num_frames"] == self.clip_length or done:
                 self.record = False # stop recording
                 if self.which_traj == 1: # if this is already the second traj, i.e. have two full trajs, ask human for preference
@@ -83,7 +104,6 @@ class Feedback(gym.Wrapper):
                         self.ask_preference()
                     self.__reset_traj_buffer()
                 self.which_traj = 1 - self.which_traj # next time record the other trajectory
-
         self.step_id += 1
 
         # print ("in feedback wrapper, output observation = ", observation)
@@ -93,7 +113,7 @@ class Feedback(gym.Wrapper):
     def ask_preference(self):
         raise NotImplementedError
         
-    def add_preference(self, obs1, acts1, obs2, acts2, preference):
+    def add_preference(self, obs1, acts1, rs1, obs2, acts2, rs2, preference):
         """
         obs1 etc is a list (length clip_length) of ndarrays (size obs_dim) 
         Add a pair of trajectories and the corresponding preference to the database
@@ -104,6 +124,8 @@ class Feedback(gym.Wrapper):
             self.pref_db.traj2s["observations"][index] = obs1
             self.pref_db.traj1s["actions"][index] = acts1
             self.pref_db.traj2s["actions"][index] = acts2
+            self.pref_db.traj1s["env_rewards"][index] = rs1
+            self.pref_db.traj2s["env_rewards"][index] = rs2
             self.pref_db.preferences[index] = preference
         else:
             self.pref_db.traj1s["observations"].append(obs1)
@@ -111,15 +133,18 @@ class Feedback(gym.Wrapper):
             self.pref_db.traj2s["observations"].append(obs2)
             self.pref_db.traj2s["actions"].append(acts2)
             self.pref_db.preferences.append(preference)
+            self.pref_db.traj1s["env_rewards"].append(rs1)
+            self.pref_db.traj2s["env_rewards"].append(rs2)
             self.pref_db.db_size += 1
+        self.pref_db.total_labeled += 1
         if self.pref_db.db_size % self.save_pref_db_freq == 0:
             print (f"{self.pref_db.db_size} preferences collected. Saving database to json...")
             # TODO: placeholder for env name
             self.pref_db.save_to_json("[env name placeholder]" + "preference_db.json")
         
 class HumanFeedback(Feedback):
-    def __init__(self, env):
-        super().__init__(env)
+    def __init__(self, env, config):
+        super().__init__(env, config)
         print("--Using human feedback.--")
 
     def _render_video(self, frames1, frames2):
@@ -162,14 +187,16 @@ class HumanFeedback(Feedback):
         # add to database
         self.add_preference(self.traj_buffer[0]["observations"],
                             self.traj_buffer[0]["actions"],
+                            self.traj_buffer[0]["env_rewards"],
                             self.traj_buffer[1]["observations"],
                             self.traj_buffer[1]["actions"],
+                            self.traj_buffer[1]["env_rewards"],
                             preference)
         return
 
 class SyntheticFeedback(Feedback):
-    def __init__(self, env):
-        super().__init__(env)
+    def __init__(self, env, config):
+        super().__init__(env, config)
         print("--Using synthetic feedback.--")
 
     def record_additional_data(self, env_reward = None):
@@ -188,8 +215,10 @@ class SyntheticFeedback(Feedback):
             preference = 3
         self.add_preference(self.traj_buffer[0]["observations"],
                             self.traj_buffer[0]["actions"],
+                            self.traj_buffer[0]["env_rewards"],
                             self.traj_buffer[1]["observations"],
                             self.traj_buffer[1]["actions"],
+                            self.traj_buffer[1]["env_rewards"],
                             preference)
         return
 

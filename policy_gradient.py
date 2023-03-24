@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import gym
 import os
-from general import get_logger, Progbar, export_plot
+from general import get_logger, Progbar, export_plot, plot_correlation
 from baseline_network import BaselineNetwork
 from network_utils import build_mlp, device, np2torch
 from policy import CategoricalPolicy, GaussianPolicy

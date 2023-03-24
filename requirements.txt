@@ -10,3 +10,4 @@ opencv-python
 pyglet==1.5.27
 moviepy
 wandb
+mujoco-py<1.50.2,>=1.50.1

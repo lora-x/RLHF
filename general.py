@@ -27,6 +27,24 @@ def export_plot(ys, ylabel, title, filename):
     plt.savefig(filename)
     plt.close()
 
+def plot_correlation(correlations, path):
+    # def export_plot(ys, ylabel, title, filename):
+    print("plotting correlations")
+    """
+    Export a plot in filename
+
+    Args:
+        ys: (list) of float / int to plot
+        filename: (string) directory
+    """
+    plt.figure()
+    plt.plot(correlations["step_ids"], correlations["coefficients"])
+    plt.xlabel("Steps")
+    plt.ylabel("Correlation Coefficients")
+    plt.title("Linear Correlation Between Predicted and True Rewards")
+    plt.savefig(path)
+    plt.close()
+
 
 def get_logger(filename):
     """

@@ -4,7 +4,7 @@ import time
 env = gym.make('MountainCar-v0')
 
 # Number of steps you run the agent for 
-num_steps = 1500
+num_steps = 100
 
 obs = env.reset()
 
@@ -17,7 +17,8 @@ for step in range(num_steps):
     obs, reward, done, info = env.step(action)
     
     # Render the env
-    env.render()
+    frame = env.render(mode='rgb_array')
+    print(frame)
 
     # Wait a bit before the next frame unless you want to see a crazy fast video
     time.sleep(0.001)

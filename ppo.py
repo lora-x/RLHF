@@ -6,7 +6,7 @@ import itertools
 import copy
 import os
 import math
-from general import get_logger, Progbar, export_plot
+from general import get_logger, Progbar, export_plot, plot_correlation
 from baseline_network import BaselineNetwork
 from network_utils import build_mlp, device, np2torch
 from policy import CategoricalPolicy, GaussianPolicy
@@ -126,6 +126,9 @@ class PPO(PolicyGradient):
             self.config.env_name,
             self.config.plot_output,
         )
+        
+        plot_correlation(self.env.correlation, self.config.output_path + "correlation.png")
+        np.save(self.config.correlation_output, self.env.correlation["coefficients"], self.env.correlation["step_ids"])
 
     def sample_path(self, env, num_episodes=None):
         """

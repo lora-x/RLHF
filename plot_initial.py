@@ -59,26 +59,23 @@ if __name__ == "__main__":
     if not directory.is_dir():
         early_exit(f"{directory.resolve()} is not a directory")
 
-    all_results = {"0.0": [], "0.01": [], "0.05" : [], "0.1": []}
+    all_results = {"0": [], "50": [], "200" : []}
     for seed in seeds:
-        format_str = f"{gym_env_name}-{{}}-seed={seed}"
-        all_results["0.0"].append(
-            np.load(directory / format_str.format("0.0") / "scores.npy")
+        format_str = f"{gym_env_name}-0.1-1000-{{}}-seed={seed}"
+        all_results["0"].append(
+            np.load(directory / format_str.format("0") / "scores.npy")
         )
-        all_results["0.01"].append(
-            np.load(directory / format_str.format("0.01") / "scores.npy")
+        all_results["50"].append(
+            np.load(directory / format_str.format("50") / "scores.npy")
         )
-        all_results["0.05"].append(
-            np.load(directory / format_str.format("0.05") / "scores.npy")
+        all_results["200"].append(
+            np.load(directory / format_str.format("200") / "scores.npy")
         )
-        all_results["0.1"].append(
-            np.load(directory / format_str.format("0.1") / "scores.npy")
-        )
-
+    
     plt.figure()
     plt.title(args.env_name)
     plt.xlabel("Iteration")
     for name, results in all_results.items():
         plot_combined(name, results)
-    plt.legend()
-    plt.savefig(directory / f"results-{args.env_name}", bbox_inches="tight")
+    plt.legend(loc='upper left')
+    plt.savefig(directory / f"results-0.1-1000-initial-{args.env_name}.png", bbox_inches="tight")

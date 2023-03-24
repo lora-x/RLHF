@@ -22,16 +22,17 @@ from reward_wrapper import FeedbackReward
 
 print("\n" * 5, "=================================\n", "\n" * 5)
 
-# bullet_env = "InvertedPendulumBulletEnv-v0"
-pendulum = "Pendulum-v1"
-env = SyntheticFeedback(FeedbackReward(gym.make(pendulum), synthetic_feedback = True))
+# env_name = "InvertedPendulumBulletEnv-v0"
+env_name = "Pendulum-v1"
+config = get_config("pendulum", entropy = 0.01)
+env = SyntheticFeedback(FeedbackReward(gym.make(env_name)), config)
 env.reset()
 
-eval_env = gym.make(pendulum)
+eval_env = gym.make(env_name)
 eval_env.reset()
 observation = eval_env.reset()
 
-config = get_config("pendulum")
+
 ppo = PPO(env, eval_env, config, seed = 1)
 
 

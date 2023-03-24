@@ -19,14 +19,16 @@ class PreferenceDb(object):
             self.traj1s = {
                 "observations": [],
                 "actions": [],
+                "env_rewards": [],
             }
             self.traj2s = {
                 "observations": [],
                 "actions": [],
+                "env_rewards": [],
             }
             self.preferences = []
             self.db_size = 0 # current size
-            # self.total_labeled = 0 # total number of preferences collected, including those discarded
+            self.total_labeled = 0 # total number of preferences collected, including those discarded
             PreferenceDb._instance = self
 
     @staticmethod

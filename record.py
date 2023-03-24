@@ -10,6 +10,8 @@ from gym.wrappers import RecordVideo, Monitor
 from rlhf_record_video import CustomRecordVideo
 from reward_wrapper import CustomReward
 
+import mujoco_py
+
 
 FREQUENCY = 50
 VIDEO_LENGTH = 30
