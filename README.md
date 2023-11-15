@@ -1,4 +1,4 @@
-# Replicating Deep Reinforcement Learning From Human Preferences in Robotic Tasks
+# Replicating Deep Reinforcement Learning From Human Preferences in Gym
 
 This is an attempt to implement a minimal (in the fashion of Karpathy's minGPT) version of the architecture described in the paper [Deep Reinforcement Learning from Human Preferences](https://arxiv.org/abs/1706.03741) in [Gym](https://github.com/openai/gym). 
 
