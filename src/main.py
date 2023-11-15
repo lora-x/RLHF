@@ -1,17 +1,16 @@
 # -*- coding: UTF-8 -*-
 
 import argparse
+import random
 import numpy as np
 import torch
 import gym
 import pybullet_envs
-from policy_gradient import PolicyGradient
-from ppo import PPO
-from config import get_config
-import random
-import pdb
 import matplotlib.pyplot as plt
 
+# model
+from model.ppo import PPO
+from config import get_config
 # wrappers
 from human_feedback_wrapper import HumanFeedback, SyntheticFeedback
 from reward_wrapper import FeedbackReward
@@ -26,7 +25,7 @@ parser.add_argument("--seed", type=int, default=1)
 parser.add_argument("--entropy", type=float, choices=[0.0, 0.01, 0.05, 0.1], default=0.1)
 parser.add_argument("--constant-ask", type=int, choices=[100, 1000, 10000], default=1000)
 parser.add_argument("--collect-initial", type=int, choices=[0, 50, 200], default=0)
-parser.add_argument("--num-batches", type=int, choices=[2, 10, 20, 50, 100], default=100)
+parser.add_argument("--num-batches", type=int, default=100)
 parser.set_defaults(use_baseline=True)
 
 
@@ -38,13 +37,9 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     random.seed(args.seed)
 
-    print("\n" * 5, "=================================\n", "\n" * 5)
-
     config = get_config(args.env_name, args.seed, args.entropy, args.constant_ask, args.collect_initial, args.num_batches)
     
     if args.synthetic:
-        # env = gym.make(config.env_name)
-        # env.render("human")
         env = SyntheticFeedback(FeedbackReward(gym.make(config.env_name)), config=config)
     else:
         env = HumanFeedback(FeedbackReward(gym.make(config.env_name)), config=config)
@@ -66,9 +61,6 @@ if __name__ == "__main__":
         eval_env.render(mode = "human")
         observation, reward, done, info = eval_env.step(model.policy.act(observation))
         total_reward += reward
-        # wandb.log({"eval env reward" : reward})
-        # if i > 0:
-        #     wandb.log({"avg eval env reward" : total_reward/i})
 
     eval_env.close()
     print("total reward = ", total_reward)

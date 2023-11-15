@@ -2,15 +2,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import gym
-import itertools
-import copy
-import os
-import math
-from general import get_logger, Progbar, export_plot, plot_correlation
-from baseline_network import BaselineNetwork
-from network_utils import build_mlp, device, np2torch
-from policy import CategoricalPolicy, GaussianPolicy
-from policy_gradient import PolicyGradient
+from .general import get_logger, Progbar, export_plot, plot_correlation
+from .baseline_network import BaselineNetwork
+from .network_utils import build_mlp, device, np2torch
+from .policy import CategoricalPolicy, GaussianPolicy
+from .policy_gradient import PolicyGradient
 
 class PPO(PolicyGradient):
 
@@ -163,16 +159,12 @@ class PPO(PolicyGradient):
 
             for step in range(self.config.max_ep_len):
                 states.append(state)
-                # Note the difference between this line and the corresponding line
-                # in PolicyGradient.
-                # print("state: ", state)
+                # Note the difference between this line and the corresponding line in PolicyGradient.
                 action, old_logprob = self.policy.act(states[-1][None], return_log_prob = True)
                 assert old_logprob.shape == (1,)
                 action, old_logprob = action[0], old_logprob[0]
                 state, reward, done, info = env.step(action)
 
-                # if num_episodes:
-                    # print("reward", reward.item())
                 actions.append(action)
                 old_logprobs.append(old_logprob)
                 rewards.append(reward)
@@ -186,7 +178,6 @@ class PPO(PolicyGradient):
 
             # add entropy bonus
             entropy = self.policy.action_distribution(observations=torch.Tensor(np.array(states))).entropy()
-            # print("entropy = ", entropy)
             rewards = np.array(rewards) + self.config.entropy_bonus * entropy.detach().numpy()
 
             path = {

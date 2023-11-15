@@ -1,9 +1,10 @@
+import random
+import cv2
 import gym
 import numpy as np
-from network_utils import np2torch 
-import cv2
+
+from model.network_utils import np2torch 
 from preference_db import PreferenceDb
-import random
 
 """
 Base class for HumanFeedback and SyntheticFeedback
@@ -12,6 +13,7 @@ class Feedback(gym.Wrapper):
     def __init__(self, env, config): # by default uses human feedback
         super().__init__(env)
         self.env = env
+        self.config = config
         self.step_id = 0
         self.record = False
         self.pref_db = PreferenceDb.get_instance()
@@ -23,7 +25,7 @@ class Feedback(gym.Wrapper):
     
         # below subject to change
 
-        self.clip_length = 10 # how long each clip should be
+        self.clip_length = 30 # how long each clip should be
         self.save_pref_db_freq = 100
         self.max_db_size = 1000
         # ask frequency related
@@ -96,7 +98,6 @@ class Feedback(gym.Wrapper):
             self.traj_buffer[i]["num_frames"] += 1
             self.record_additional_data(env_reward = info.get("env_reward", None))
 
-            # print("recording traj ", i, " frame ", self.traj_buffer[i]["num_frames"]) # debug: if some env episode always terminates before clip_length is reached, then never have equal lengths and so never ask preference
             if self.traj_buffer[i]["num_frames"] == self.clip_length or done:
                 self.record = False # stop recording
                 if self.which_traj == 1: # if this is already the second traj, i.e. have two full trajs, ask human for preference
@@ -105,8 +106,6 @@ class Feedback(gym.Wrapper):
                     self.__reset_traj_buffer()
                 self.which_traj = 1 - self.which_traj # next time record the other trajectory
         self.step_id += 1
-
-        # print ("in feedback wrapper, output observation = ", observation)
 
         return observation, reward, done, info
     
@@ -137,10 +136,9 @@ class Feedback(gym.Wrapper):
             self.pref_db.traj2s["env_rewards"].append(rs2)
             self.pref_db.db_size += 1
         self.pref_db.total_labeled += 1
-        if self.pref_db.db_size % self.save_pref_db_freq == 0:
-            print (f"{self.pref_db.db_size} preferences collected. Saving database to json...")
-            # TODO: placeholder for env name
-            self.pref_db.save_to_json("[env name placeholder]" + "preference_db.json")
+        # if self.pref_db.db_size % self.save_pref_db_freq == 0:
+        #     print (f"{self.pref_db.db_size} preferences collected. Saving database to json...")
+        #     self.pref_db.save_to_json(f"{self.config.env_name}_preference_db.json")
         
 class HumanFeedback(Feedback):
     def __init__(self, env, config):
@@ -221,14 +219,3 @@ class SyntheticFeedback(Feedback):
                             self.traj_buffer[1]["env_rewards"],
                             preference)
         return
-
-# TEST 
-# env = HumanFeedback(gym.make('Pendulum-v1'))
-# env.reset()
-
-# for i in range(400):
-#     observation, reward, done, info = env.step(env.action_space.sample())
-#     if done:
-#         env.reset()
-
-# print(env.pref_db.db_size)

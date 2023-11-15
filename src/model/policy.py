@@ -1,14 +1,11 @@
+import math
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributions as ptd
-
-from network_utils import np2torch, device
 from torch.distributions import Categorical, Normal, Independent
 
-import pdb
-import numpy as np
-import math
-
+from .network_utils import np2torch, device
 
 class BasePolicy:
     def action_distribution(self, observations):
@@ -135,11 +132,7 @@ class GaussianPolicy(BasePolicy, nn.Module):
         #######################################################
         #########   YOUR CODE HERE - 2-4 lines.    ############
         # to make sure the output is in the range of action space
-        # print("obs shape = ", observations.shape)
-        # print("obs = ", observations)
         mean = self.network(observations)
-        # print("loc: ", mean)
-        # print("tanh loc: ", torch.tanh(mean))
         std = self.std()
         distribution = Independent(Normal(mean, std), 1)
         #######################################################

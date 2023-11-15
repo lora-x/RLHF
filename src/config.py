@@ -1,9 +1,8 @@
 import torch.nn as nn
 from datetime import datetime
 
-
 class config_cartpole:
-    def __init__(self, use_baseline, ppo, seed):
+    def __init__(self, use_baseline, ppo, seed, num_batches):
         self.env_name = "CartPoleBulletEnv-v1"
         self.record = False
         baseline_str = ("baseline" if use_baseline else "no_baseline") if not ppo else "ppo"
@@ -21,8 +20,7 @@ class config_cartpole:
         self.summary_freq = 1
 
         # model and training config
-        self.num_batches = 10 # test
-        # self.num_batches = 100  # number of batches trained on
+        self.num_batches = num_batches # number of batches trained on
         self.batch_size = 2000  # number of steps used to compute each policy update
         self.max_ep_len = 200  # maximum episode length
         self.learning_rate = 3e-2
