@@ -6,15 +6,17 @@ The learnable reward network and the preference collector are implemented as wra
 
 Like the original paper, this implementation includes a pipeline to generate and train on **synthetic feedback**. 
 
-<img src="./pipeline.png" alt="pipeline" width="700">
+<img src="./pipeline.png" alt="pipeline" width="500">
 
 ## Using this code
 
-Entering feedback yourself via the keyboard: 1 or 2 for preference | Space for equal | Delete/Backspace for incomparable
+#### Providing feedback yourself via the keyboard
+
+1 or 2 for prefering left or right clip | Space for equal | Delete/Backspace for incomparable
 
 `python src/main.py --env-name pendulum --num-batches 50`
 
-Using an oracle for synthetic feedback: 
+#### Using an oracle for synthetic feedback: 
 
 `python src/main.py --env-name pendulum --synthetic --num-batches 50`
 
